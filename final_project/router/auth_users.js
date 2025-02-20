@@ -84,22 +84,35 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
     return res.status(200).json({ message: "Review added/modified successfully." });
   });
 
+
   regd_users.delete("/auth/review/:isbn", (req, res) => {
     const isbn = req.params.isbn;
-    const username = req.session.authorization.username; // Assuming the username is stored in the session
-    const book = books[req.params.isbn];
-    // Check if the user is authenticated
+    const username = req.session.authorization.username;
+  
+    // Check if the user is logged in
     if (!username) {
-        return res.status(401).json({ message: "User not authenticated." });
+        return res.status(401).json({ message: "Only logged users can delete reviews. Please log in" });
     }
+  
+    // Check if any book in the 'books' object has the provided 'isbn'
     const foundBook = Object.values(books).find(book => book.isbn === isbn);
-    if (isbn) {
-        // Delete review from 'book' object based on provided isbn
-        delete foundBook.review[username];
+    if (foundBook) {
+        // Check if the book has reviews
+        if (foundBook.reviews) {
+            // Check if the user has a review for this book
+            if (foundBook.reviews.hasOwnProperty(username)) {
+                // Delete the user's review for this book
+                delete foundBook.reviews[username];
+                return res.status(200).json({ message: "Review deleted successfully" });
+            } else {
+                return res.status(404).json({ message: "No review found for this user and book combination" });
+            }
+        } else {
+            return res.status(404).json({ message: "No reviews found for this book" });
+        }
+    } else {
+        return res.status(404).json({ message: "Book not found" });
     }
-    
-    // Send response confirming deletion of friend
-    res.send(`review from user on the book with the isbn ${isbn} deleted.`);
   });
 
 module.exports.authenticated = regd_users;
